@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tienda — Productos</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#0b1220;color:#e2e8f0;margin:0}
+  header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:linear-gradient(135deg,#06b6d4,#3b82f6)}
+  .name{font-weight:800}
+  .wrap{padding:14px; padding-bottom:130px;} /* 👈 espacio para que el carrito no tape nada */
+  .grid{display:grid;grid-template-columns:1fr;gap:14px}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:16px;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .img{
+    width:100%;
+    height:auto;               /* 👈 deja que la altura se adapte */
+    max-height:320px;          /* 👈 límite razonable en móvil */
+    object-fit:contain;        /* 👈 NO recorta, muestra completa */
+    object-position:center;
+    background:#0b1220;
+    display:block;
+  }
+  .p{padding:12px}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .qty{display:flex;gap:8px;align-items:center}
+  .qty button{width:30px;height:30px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px}
+  .add{margin-top:10px;width:100%;padding:10px;border:0;border-radius:10px;background:#22c55e;color:#052e12;font-weight:800}
+  .cart{position:fixed;left:0;right:0;bottom:0;background:#111827;border-top:1px solid #1e293b;padding:12px}
+  .checkout{width:100%;padding:12px;border:0;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;font-weight:800}
+  select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;margin-top:8px}
+  a.link{color:#fff;text-decoration:underline;margin-right:12px}
+
+  /* Modal para zoom */
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:9999}
+  .lightbox img{max-width:92vw;max-height:90vh;object-fit:contain;border-radius:12px}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="name">Hola, <span id="uname">—</span></div>
+  <div>
+    <a class="link" href="orders.html">Mis órdenes</a>
+    <button onclick="logout()" style="border:0;background:transparent;color:#fff;text-decoration:underline;">Salir</button>
+  </div>
+</header>
+<div class="wrap">
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="cart">
+  <div id="summary" style="margin-bottom:8px">Carrito vacío</div>
+  <select id="pay">
+    <option value="tarjeta">Tarjeta</option>
+    <option value="efectivo">Efectivo</option>
+    <option value="transferencia">Transferencia</option>
+  </select>
+  <button class="checkout" onclick="checkout()">Pagar (simulado)</button>
+</div>
+
+<script>
+const API='http://localhost:4000';
+const token=localStorage.getItem('token');
+if(!token) location.href='index.html';
+document.getElementById('uname').textContent = localStorage.getItem('username') || 'Usuario';
+let cart=[];
+
+function fmt(n){return n.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0});}
+
+async function load(){
+  const r=await fetch(API+'/api/products');
+  const products=await r.json();
+  const g=document.getElementById('grid'); g.innerHTML='';
+  products.forEach(p=>{
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`
+      <img class="img" src="${p.imageUrl}" alt="${p.name}" onclick="zoomImage('${p.imageUrl}')">
+  <div class="p">
+        <div style="font-weight:800;font-size:18px">${p.name}</div>
+        <div style="color:#94a3b8;font-size:13px">${p.description||''}</div>
+        <div class="row">
+          <div style="font-weight:800">${fmt(p.price||0)}</div>
+          <div class="qty">
+            <button onclick="chg('${p._id}',-1)">-</button>
+            <div id="q_${p._id}">0</div>
+            <button onclick="chg('${p._id}',1)">+</button>
+          </div>
+        </div>
+        <button class="add" onclick="add('${p._id}','${p.name.replace(/'/g,'')}','${p.price}')">Agregar</button>
+      </div>`;
+    g.appendChild(card);
+  });
+}
+function chg(id,delta){
+  const el=document.getElementById('q_'+id);
+  let v=parseInt(el.textContent||'0',10)+delta; if(v<0)v=0; el.textContent=v;
+}
+function add(id,name,price){
+  const q=parseInt(document.getElementById('q_'+id).textContent||'0',10);
+  if(q<=0) return;
+  price=Number(price);
+  const i=cart.findIndex(x=>x.productId===id);
+  if(i>=0){ cart[i].qty+=q; } else { cart.push({productId:id,name,price,qty:q}); }
+  document.getElementById('q_'+id).textContent=0;
+  renderSummary();
+}
+function renderSummary(){
+  const t = cart.reduce((a,it)=>a+it.price*it.qty,0);
+  const items = cart.reduce((a,it)=>a+it.qty,0);
+  document.getElementById('summary').textContent = items? `${items} ítems — Total: ${fmt(t)}` : 'Carrito vacío';
+}
+async function checkout(){
+  if(!cart.length){ alert('Carrito vacío'); return; }
+  const paymentMethod = document.getElementById('pay').value;
+  const body = { paymentMethod, items: cart.map(c=>({ productId:c.productId, name:c.name, price:c.price, qty:c.qty })) };
+  const r=await fetch(API+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(d.ok){ alert('Pago simulado.\nOrden: '+d.orderId+'\nTotal: '+(d.total)); cart=[]; renderSummary(); }
+  else{ alert(d.error||'Error'); }
+}
+function logout(){ localStorage.removeItem('token'); location.href='index.html'; }
+
+load();
+</script>
+<div class="lightbox" id="lightbox" onclick="closeZoom()">
+  <img id="zoomImg" src="" alt="zoom">
+</div>
+<script>
+function zoomImage(src){
+  document.getElementById('zoomImg').src = src;
+  document.getElementById('lightbox').style.display = 'flex';
+}
+function closeZoom(){
+  document.getElementById('lightbox').style.display = 'none';
+}
+</script>
+
+</body>
+</html>

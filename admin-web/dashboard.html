@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Admin</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#0b1220;color:#e2e8f0;margin:0}
+  header{padding:18px 22px;background:linear-gradient(135deg,#3b82f6,#06b6d4);font-weight:700}
+  .wrap{padding:22px;max-width:1100px;margin:auto}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:14px;padding:18px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .k{font-size:13px;color:#94a3b8}
+  .v{font-size:26px;margin-top:6px}
+  canvas{background:#0b1220;border-radius:12px}
+  @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>Panel de Ventas — Admin</header>
+<div class="wrap">
+  <div class="grid">
+    <div class="card"><div class="k">Ventas totales (COP)</div><div class="v" id="rev">—</div></div>
+    <div class="card"><div class="k">Órdenes totales</div><div class="v" id="orders">—</div></div>
+    <div class="card"><div class="k">Ventas hoy (COP)</div><div class="v" id="revToday">—</div></div>
+    <div class="card"><div class="k">Órdenes hoy</div><div class="v" id="ordToday">—</div></div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="k">Últimos 7 días</div>
+    <canvas id="chart" width="1000" height="360"></canvas>
+  </div>
+</div>
+
+<script>
+const API='http://localhost:4000';
+const token=localStorage.getItem('admintoken');
+if(!token){location.href='login.html';}
+
+function fmt(n){return n.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0});}
+
+(async function load(){
+  const r=await fetch(API+'/api/metrics',{headers:{Authorization:'Bearer '+token}});
+  const m=await r.json();
+  if(m.error){alert('Sesión expirada'); localStorage.removeItem('admintoken'); location.href='login.html'; return;}
+  document.getElementById('rev').textContent=fmt(m.totalRevenue||0);
+  document.getElementById('orders').textContent=m.totalOrders||0;
+  document.getElementById('revToday').textContent=fmt(m.salesToday||0);
+  document.getElementById('ordToday').textContent=m.ordersToday||0;
+  drawChart(m.daily||[]);
+})();
+
+function drawChart(series){
+  const canvas=document.getElementById('chart'), ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const pad=40, w=canvas.width - pad*2, h=canvas.height - pad*2;
+  const labels=series.map(d=>d._id), values=series.map(d=>d.total);
+  const max=Math.max(1,...values);
+  ctx.strokeStyle='#1e293b'; ctx.lineWidth=1;
+  ctx.strokeRect(pad,pad,w,h);
+  const bw=w/(values.length||1)*0.6, gap=w/(values.length||1)*0.4;
+  values.forEach((v,i)=>{
+    const x=pad + i*(bw+gap) + gap/2;
+    const bh = (v/max)* (h-20);
+    const y=pad + h - bh;
+    ctx.fillStyle='#3b82f6';
+    ctx.fillRect(x,y,bw,bh);
+    ctx.fillStyle='#94a3b8'; ctx.font='12px sans-serif';
+    ctx.fillText(labels[i]||'', x, pad+h+14);
+  });
+}
+</script>
+</body>
+</html>

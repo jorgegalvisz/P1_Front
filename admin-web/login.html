@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Login</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+  .card{background:#111827;padding:32px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.5);width:360px}
+  h1{margin:0 0 16px;font-size:22px}
+  label{font-size:14px;display:block;margin:12px 0 6px;color:#94a3b8}
+  input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0}
+  button{width:100%;margin-top:16px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;font-weight:600;cursor:pointer}
+  .msg{margin-top:10px;color:#fca5a5;font-size:14px;min-height:20px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Panel Admin — Iniciar sesión</h1>
+    <label>Email</label>
+    <input id="email" type="email" value="admin@demo.com">
+    <label>Contraseña</label>
+    <input id="pass" type="password" value="admin123">
+    <button onclick="login()">Entrar</button>
+    <div class="msg" id="msg"></div>
+  </div>
+<script>
+const API='http://localhost:4000';
+async function login(){
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('pass').value.trim();
+  const r=await fetch(API+'/api/auth/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email,password})
+  });
+  const data=await r.json();
+  if(data.token && data.role==='admin'){
+    localStorage.setItem('admintoken',data.token);
+    location.href='dashboard.html';
+  }else{
+    document.getElementById('msg').textContent=data.error||'No autorizado';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mis Órdenes</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#0b1220;color:#e2e8f0;margin:0}
+  header{display:flex;gap:10px;align-items:center;padding:14px 16px;background:linear-gradient(135deg,#06b6d4,#3b82f6)}
+  a.btn{color:#fff;text-decoration:underline}
+  .wrap{padding:14px}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:14px;padding:12px;margin-bottom:12px}
+  .row{display:flex;justify-content:space-between;align-items:center}
+  .muted{color:#94a3b8;font-size:12px}
+  .items{margin-top:8px}
+  .item{display:flex;justify-content:space-between;font-size:14px;margin:2px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="font-weight:800">Mis Órdenes</div>
+  <div style="margin-left:auto">
+    <a class="btn" href="shop.html">Volver a tienda</a>
+  </div>
+</header>
+<div class="wrap" id="list">Cargando…</div>
+
+<script>
+const API='http://localhost:4000';
+const token=localStorage.getItem('token');
+if(!token){ location.href='index.html'; }
+
+function fmt(n){ return Number(n||0).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}); }
+function fdate(s){ return new Date(s).toLocaleString('es-CO'); }
+
+(async function load(){
+  try{
+    const r=await fetch(API+'/api/orders/mine',{headers:{Authorization:'Bearer '+token}});
+    const data=await r.json();
+    const c=document.getElementById('list');
+    if(!Array.isArray(data)||!data.length){ c.textContent='Aún no tienes órdenes.'; return; }
+    c.innerHTML='';
+    data.forEach(o=>{
+      const el=document.createElement('div'); el.className='card';
+      el.innerHTML=`
+        <div class="row">
+          <div><b>Orden:</b> ${o._id}</div>
+          <div class="muted">${fdate(o.createdAt)}</div>
+        </div>
+        <div class="muted">Pago: ${o.paymentMethod} · Estado: ${o.status}</div>
+        <div class="items">
+          ${o.items.map(it=>`<div class="item"><span>${it.qty}× ${it.name}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
+        </div>
+        <div class="row" style="margin-top:8px"><div><b>Total</b></div><div><b>${fmt(o.total)}</b></div></div>
+      `;
+      c.appendChild(el);
+    });
+  }catch(e){
+    document.getElementById('list').textContent='Error cargando órdenes.';
+  }
+})();
+</script>
+</body>
+</html>

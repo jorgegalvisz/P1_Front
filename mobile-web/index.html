@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tienda — Acceso</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#0b1220;color:#e2e8f0;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:22px;width:92%;max-width:420px}
+  h1{margin:0 0 10px}
+  .tabs{display:flex;gap:8px;margin:8px 0 12px}
+  .tabs button{flex:1;padding:10px;border:0;border-radius:10px;background:#111827;color:#cbd5e1}
+  .tabs button.active{background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff}
+  label{font-size:13px;color:#94a3b8;display:block;margin-top:10px}
+  input{width:100%;padding:12px;border:1px solid #334155;border-radius:10px;background:#0b1220;color:#e2e8f0}
+  .primary{width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;font-weight:700}
+  .msg{color:#fca5a5;min-height:20px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Bienvenido</h1>
+  <div class="tabs">
+    <button id="tLogin" class="active" onclick="switchTab(true)">Ingresar</button>
+    <button id="tReg" onclick="switchTab(false)">Registrarme</button>
+  </div>
+  <div id="login">
+    <label>Email</label><input id="lemail" type="email" placeholder="tucorreo@dominio.com">
+    <label>Contraseña</label><input id="lpass" type="password" placeholder="••••••••">
+    <button class="primary" onclick="login()">Entrar</button>
+  </div>
+  <div id="register" style="display:none">
+    <label>Nombre</label><input id="rname" type="text" placeholder="Tu nombre">
+    <label>Email</label><input id="remail" type="email">
+    <label>Contraseña</label><input id="rpass" type="password">
+    <button class="primary" onclick="register()">Crear cuenta</button>
+  </div>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+const API='http://localhost:4000';
+function switchTab(isLogin){
+  loginEl().style.display=isLogin?'block':'none';
+  regEl().style.display=isLogin?'none':'block';
+  byId('tLogin').classList.toggle('active',isLogin);
+  byId('tReg').classList.toggle('active',!isLogin);
+}
+function byId(x){return document.getElementById(x)}
+function regEl(){return byId('register')}
+function loginEl(){return byId('login')}
+async function register(){
+  const name=byId('rname').value.trim(), email=byId('remail').value.trim(), password=byId('rpass').value.trim();
+  const r=await fetch(API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password})});
+  const d=await r.json();
+  if(d.error){byId('msg').textContent=d.error; return;}
+  byId('msg').textContent='Cuenta creada. Ahora inicia sesión.'; switchTab(true);
+}
+async function login(){
+  const email=byId('lemail').value.trim(), password=byId('lpass').value.trim();
+  const r=await fetch(API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  const d=await r.json();
+  if(d.token){ localStorage.setItem('token',d.token); localStorage.setItem('username',d.name||''); location.href='shop.html'; }
+  else{ byId('msg').textContent=d.error||'Error'; }
+}
+</script>
+</body>
+</html>
